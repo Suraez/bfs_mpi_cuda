@@ -3,7 +3,7 @@
 #include <fstream>
 #include <vector>
 #include "cuda_bfs.cuh"
-
+using namespace std;
 void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &edges, std::vector<int> &offsets) {
     std::ifstream file(filename);
     if (!file) {
@@ -26,6 +26,18 @@ void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &e
         edges.insert(edges.end(), adjacency_list[i].begin(), adjacency_list[i].end());
     }
 }
+// // Function to print all elements in a vector
+// void print_vector(const std::vector<int>& vec) {
+//     std::cout << "[";
+//     for (size_t i = 0; i < vec.size(); ++i) {
+//         std::cout << vec[i];
+//         if (i != vec.size() - 1) {
+//             std::cout << ", ";
+//         }
+//     }
+//     std::cout << "]" << std::endl;
+// }
+
 
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
@@ -50,7 +62,11 @@ int main(int argc, char *argv[]) {
     }
     MPI_Bcast(offsets.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(edges.data(), m, MPI_INT, 0, MPI_COMM_WORLD);
-
+    
+    // cout << "rank: " << rank << endl;
+    // cout << "printing edges and offsets.." << endl;
+    // print_vector(edges);
+    // print_vector(offsets);
     if (rank == 0) {
         cuda_init(m, n, edges, offsets);
 

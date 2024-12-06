@@ -4,6 +4,7 @@
 #include <vector>
 #include "cuda_bfs.cuh"
 using namespace std;
+
 void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &edges, std::vector<int> &offsets) {
     std::ifstream file(filename);
     if (!file) {
@@ -42,6 +43,16 @@ void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &e
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
 
+    if (argc < 2) {
+        if (MPI::COMM_WORLD.Get_rank() == 0) {
+            std::cerr << "Graph File name not given." << std::endl;
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    std::string graph_filename = argv[1];
+
     int world_size, rank;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -50,7 +61,7 @@ int main(int argc, char *argv[]) {
     std::vector<int> edges, offsets;
 
     if (rank == 0) {
-        read_graph("graph.txt", n, m, edges, offsets);
+        read_graph(graph_filename, n, m, edges, offsets);
     }
 
     MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -63,6 +74,12 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(offsets.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(edges.data(), m, MPI_INT, 0, MPI_COMM_WORLD);
     
+    
+    // cout << "rank: " << rank << endl;
+    // cout << "printing edges and offsets.." << endl;
+    // print_vector(edges);
+    // print_vector(offsets);
+
     // cout << "rank: " << rank << endl;
     // cout << "printing edges and offsets.." << endl;
     // print_vector(edges);

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <queue>
 #include "cuda_bfs.cuh"
 using namespace std;
 
@@ -26,6 +27,37 @@ void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &e
         offsets[i + 1] = offsets[i] + adjacency_list[i].size();
         edges.insert(edges.end(), adjacency_list[i].begin(), adjacency_list[i].end());
     }
+}
+
+void bfs_sequential(int n, const std::vector<int> &edges, const std::vector<int> &offsets) {
+    std::vector<bool> visited(n, false);
+    std::queue<int> q;
+    std::vector<int> traversal;
+
+
+    q.push(0); // Start BFS from vertex 1 (index 0)
+    visited[0] = true;
+
+    while (!q.empty()) {
+        int current = q.front();
+        q.pop();
+        traversal.push_back(current + 1); // Convert back to 1-based indexing
+
+        for (int i = offsets[current]; i < offsets[current + 1]; ++i) {
+            int neighbor = edges[i];
+            if (!visited[neighbor]) {
+                visited[neighbor] = true;
+                q.push(neighbor);
+            }
+        }
+    }
+
+    // Print BFS traversal
+    std::cout << "Sequential BFS Traversal Path: ";
+    for (int vertex : traversal) {
+        std::cout << vertex << " ";
+    }
+    std::cout << std::endl;
 }
 // // Function to print all elements in a vector
 // void print_vector(const std::vector<int>& vec) {
@@ -86,6 +118,10 @@ int main(int argc, char *argv[]) {
     // print_vector(offsets);
     if (rank == 0) {
         cuda_init(m, n, edges, offsets);
+
+
+        // Perform Sequential BFS
+        bfs_sequential(n, edges, offsets);
 
         std::vector<int> bfs_result;
         cuda_bfs(n, 0, bfs_result);

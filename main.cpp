@@ -4,6 +4,8 @@
 #include <vector>
 #include <queue>
 #include "cuda_bfs.cuh"
+#include <chrono>
+#include <iomanip>
 using namespace std;
 
 void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &edges, std::vector<int> &offsets) {
@@ -29,11 +31,12 @@ void read_graph(const std::string &filename, int &n, int &m, std::vector<int> &e
     }
 }
 
-void bfs_sequential(int n, const std::vector<int> &edges, const std::vector<int> &offsets) {
+void bfs_sequential(int n, const std::vector<int> &edges, const std::vector<int> &offsets, double &duration) {
     std::vector<bool> visited(n, false);
     std::queue<int> q;
     std::vector<int> traversal;
 
+    auto start_time = std::chrono::high_resolution_clock::now();
 
     q.push(0); // Start BFS from vertex 1 (index 0)
     visited[0] = true;
@@ -51,6 +54,9 @@ void bfs_sequential(int n, const std::vector<int> &edges, const std::vector<int>
             }
         }
     }
+
+    auto end_time = std::chrono::high_resolution_clock::now();
+    duration = std::chrono::duration<double, std::milli>(end_time - start_time).count();
 
     // Print BFS traversal
     std::cout << "Sequential BFS Traversal Path: ";
@@ -71,6 +77,29 @@ void bfs_sequential(int n, const std::vector<int> &edges, const std::vector<int>
 //     std::cout << "]" << std::endl;
 // }
 
+void print_timing_comparison(double seq_timer, double par_timer) {
+    std::cout << "=============================================" << std::endl;
+    std::cout << "| BFS Timing Comparison (in milliseconds)   |" << std::endl;
+    std::cout << "---------------------------------------------" << std::endl;
+    std::cout << std::fixed << std::setprecision(2); // Fixed-point notation with 2 decimal places
+    std::cout << "| Sequential BFS: | " << std::setw(10) << seq_timer << " ms           |" << std::endl;
+    std::cout << "| Parallel BFS:   | " << std::setw(10) << par_timer << " ms           |" << std::endl;
+    std::cout << "---------------------------------------------" << std::endl;
+
+    if (seq_timer > par_timer) {
+        std::cout << "| Parallel BFS is faster by " 
+                  << std::setw(10) << seq_timer - par_timer << " ms!       |" << std::endl;
+    } else if (seq_timer < par_timer) {
+        std::cout << "| Sequential BFS is faster by " 
+                  << std::setw(10) << par_timer - seq_timer << " ms!       |" << std::endl;
+    } else {
+        std::cout << "| Both BFS approaches took the same time!   |" << std::endl;
+    }
+    std::cout << "=============================================" << std::endl;
+}
+
+
+
 
 int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
@@ -86,6 +115,7 @@ int main(int argc, char *argv[]) {
     std::string graph_filename = argv[1];
 
     int world_size, rank;
+    double seq_timer, par_timer;
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
@@ -106,32 +136,26 @@ int main(int argc, char *argv[]) {
     MPI_Bcast(offsets.data(), n + 1, MPI_INT, 0, MPI_COMM_WORLD);
     MPI_Bcast(edges.data(), m, MPI_INT, 0, MPI_COMM_WORLD);
     
-    
-    // cout << "rank: " << rank << endl;
-    // cout << "printing edges and offsets.." << endl;
-    // print_vector(edges);
-    // print_vector(offsets);
-
-    // cout << "rank: " << rank << endl;
-    // cout << "printing edges and offsets.." << endl;
-    // print_vector(edges);
-    // print_vector(offsets);
     if (rank == 0) {
+        auto start_time = std::chrono::high_resolution_clock::now();
         cuda_init(m, n, edges, offsets);
 
 
         // Perform Sequential BFS
-        bfs_sequential(n, edges, offsets);
 
         std::vector<int> bfs_result;
         cuda_bfs(n, 0, bfs_result);
 
+        auto end_time = std::chrono::high_resolution_clock::now();
+        par_timer = std::chrono::duration<double, std::milli>(end_time - start_time).count();
+        bfs_sequential(n, edges, offsets, seq_timer);
         std::cout << "BFS Traversal Order: ";
         for (int v : bfs_result) {
             if (v != -1) std::cout << v + 1 << " ";
         }
         std::cout << std::endl;
 
+        print_timing_comparison(seq_timer, par_timer);
         cuda_cleanup();
     }
 

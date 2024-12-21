@@ -25,7 +25,7 @@ ii. Running on the single machine
 <b>Notes: </b> <br>
 i. here graph5.txt is the graph file name, you can pass any graph or graphs that comes with the repository like graph3.txt graph.txt
 
-    e.g. `mpirun -np 4 --hostfile hosts.txt mpi_cuda_bfs graph.txt`
+e.g. `mpirun -np 4 --hostfile hosts.txt mpi_cuda_bfs graph.txt`
 
 
 ii. For changing the number of processes, you can change the `-np` flag e.g.
